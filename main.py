@@ -95,7 +95,7 @@ async def download_media(client: Client, message: Message):
         return
 
     fpath = Path(fpath)
-    url = f"https://{bot_cfg.fly_app_name}.fly.dev/{fpath.parent.name}/{fpath.name}"
+    url = f"https://{bot_cfg.render_url}.fly.dev/{fpath.parent.name}/{fpath.name}"
     log(INFO, f"Downloaded: {url}")
     try:
         buttons = InlineKeyboardMarkup([[InlineKeyboardButton("❌ Eliminar", "delete")]])
@@ -120,8 +120,8 @@ async def delete(client: Client, query: CallbackQuery):
 
 
 def webserver():
-    log(INFO, f"Starting webserver on {bot_cfg.fly_web_port}")
-    system(f"python -m http.server -d ./downloads/ {bot_cfg.fly_web_port}")
+    log(INFO, f"Starting webserver on {bot_cfg.render_web_port}")
+    system(f"python -m http.server -d ./downloads/ {bot_cfg.render_web_port}")
     # run(["python", "-m", "http.server", "-d", "./downloads/", bot_cfg.fly_web_port])
 
 
