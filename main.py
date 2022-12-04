@@ -3,7 +3,7 @@ from logging import basicConfig, log, INFO, WARN, ERROR, CRITICAL
 from pathlib import Path
 from random import randbytes
 from requests import get
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 from threading import current_thread
 from ctypes import c_ulong, pythonapi, py_object
 from typing import Any, Awaitable, Callable
@@ -131,7 +131,7 @@ async def download_media(client: Client, message: Message):
         return
 
     fpath = Path(fpath)
-    url = quote(f"https://{bot_cfg.render_url}/{fpath.parent.name}/{fpath.name}")
+    url = f"https://{bot_cfg.render_url}/{fpath.parent.name}/{quote(fpath.name)}"
     log(INFO, f"Downloaded: {url}")
     try:
         buttons = InlineKeyboardMarkup([[InlineKeyboardButton("❌ Eliminar", "delete")]])
@@ -144,7 +144,7 @@ async def download_media(client: Client, message: Message):
 
 @bot.on_callback_query(filters.regex(r"^delete$"))
 async def delete(client: Client, query: CallbackQuery):
-    url = Path(query.message.text)
+    url = Path(unquote(query.message.text))
     fpath = f"./downloads/{url.parent.name}/{url.name}"
     log(INFO, f"Delete: {fpath}")
     await query.answer("Eliminando...")
