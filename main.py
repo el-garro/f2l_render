@@ -2,6 +2,8 @@
 from logging import basicConfig, log, INFO, WARN, ERROR, CRITICAL
 from pathlib import Path
 from random import randbytes
+from requests import get
+
 basicConfig(format="[%(levelname)s]: %(message)s", level=INFO, force=True)
 log(INFO, "Initializing...")
 # fmt: on
@@ -17,7 +19,7 @@ from pyrogram.enums.parse_mode import ParseMode
 from os import system, unlink
 from threading import Thread
 from inspect import iscoroutinefunction
-from time import time
+from time import sleep, time
 import bot_cfg
 
 bot: Client = Client(
@@ -125,7 +127,18 @@ def webserver():
     # run(["python", "-m", "http.server", "-d", "./downloads/", bot_cfg.fly_web_port])
 
 
+def heartbeat():
+    while True:
+        try:
+            get(f"https://{bot_cfg.render_url}/")
+            log(INFO, "Heartbeat")
+        except:
+            pass
+
+        sleep(10 * 60)
+
+
 log(INFO, "Starting...")
-web_thread = Thread(target=webserver)
-web_thread.start()
+Thread(target=webserver).start()
+Thread(target=heartbeat).start()
 bot.run()
