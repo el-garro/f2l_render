@@ -3,6 +3,10 @@ from logging import basicConfig, log, INFO, WARN, ERROR, CRITICAL
 from pathlib import Path
 from random import randbytes
 from requests import get
+from threading import current_thread
+from ctypes import c_ulong, pythonapi, py_object
+from typing import Any, Awaitable, Callable
+import asyncio
 
 basicConfig(format="[%(levelname)s]: %(message)s", level=INFO, force=True)
 log(INFO, "Initializing...")
@@ -17,18 +21,38 @@ from pyrogram.types import (
 )
 from pyrogram.enums.parse_mode import ParseMode
 from os import system, unlink
-from threading import Thread
 from inspect import iscoroutinefunction
 from time import sleep, time
 import bot_cfg
 
-bot: Client = Client(
-    "bot",
-    api_id=bot_cfg.tg_api_id,
-    api_hash=bot_cfg.tg_api_hash,
-    bot_token=bot_cfg.tg_bot_token,
-)
-bot.set_parse_mode(ParseMode.DISABLED)
+
+def async_e(func: Callable) -> Awaitable:
+    """Decorate a sync function to be used as async. Supports task cancelling.
+    This version is based on loop.run_in_executor()
+    """
+
+    async def run_cancellable(*args, **kwargs) -> Any:
+        def worker() -> Any:
+            context["thread"] = current_thread().ident
+            return func(*args, **kwargs)
+
+        context: dict = {"thread": None}
+        loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
+        future: asyncio.Future = asyncio.ensure_future(
+            loop.run_in_executor(None, worker)
+        )
+        while not future.done():
+            try:
+                await asyncio.wait([future])
+            except asyncio.CancelledError:
+                thread_id: c_ulong = c_ulong(context["thread"])
+                exception: py_object = py_object(asyncio.CancelledError)
+                ret: int = pythonapi.PyThreadState_SetAsyncExc(thread_id, exception)
+                if ret > 1:  # This should NEVER happen, but shit happens
+                    pythonapi.PyThreadState_SetAsyncExc(thread_id, None)
+        return future.result()
+
+    return run_cancellable
 
 
 def slow(interval: int):
@@ -59,6 +83,15 @@ def slow(interval: int):
             return wrap_sync
 
     return dec
+
+
+bot: Client = Client(
+    "bot",
+    api_id=bot_cfg.tg_api_id,
+    api_hash=bot_cfg.tg_api_hash,
+    bot_token=bot_cfg.tg_bot_token,
+)
+bot.set_parse_mode(ParseMode.DISABLED)
 
 
 @slow(2)
@@ -121,16 +154,21 @@ async def delete(client: Client, query: CallbackQuery):
         pass
 
 
+@async_e
 def webserver():
     log(INFO, f"Starting webserver on {bot_cfg.render_web_port}")
     system(f"python -m http.server -d ./downloads/ {bot_cfg.render_web_port}")
     # run(["python", "-m", "http.server", "-d", "./downloads/", bot_cfg.fly_web_port])
 
 
+@async_e
 def heartbeat():
+    log(INFO, "Starting heartbeat each 10 minutes")
     while True:
         try:
-            get(f"https://{bot_cfg.render_url}/HEARTBEAT-10")
+            log(INFO, "Heartbeat")
+            get(f"https://{bot_cfg.render_url}/HEARTBEAT/")
+
         except:
             pass
 
@@ -138,9 +176,6 @@ def heartbeat():
 
 
 log(INFO, "Starting...")
-web_t = Thread(target=webserver)
-web_t.start()
-
-heart_t = Thread(target=heartbeat)
-heart_t.start()
+bot.loop.create_task(webserver())
+bot.loop.create_task(heartbeat())
 bot.run()
