@@ -138,6 +138,9 @@ def heartbeat():
 
 
 log(INFO, "Starting...")
-Thread(target=webserver).start()
-Thread(target=heartbeat).start()
+web_t = Thread(target=webserver)
+web_t.start()
+
+heart_t = Thread(target=heartbeat)
+heart_t.start()
 bot.run()
