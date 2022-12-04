@@ -130,8 +130,7 @@ def webserver():
 def heartbeat():
     while True:
         try:
-            get(f"https://{bot_cfg.render_url}/")
-            log(INFO, "Heartbeat")
+            get(f"https://{bot_cfg.render_url}/HEARTBEAT-10")
         except:
             pass
 
