@@ -95,7 +95,7 @@ async def download_media(client: Client, message: Message):
         return
 
     fpath = Path(fpath)
-    url = f"https://{bot_cfg.render_url}.fly.dev/{fpath.parent.name}/{fpath.name}"
+    url = f"https://{bot_cfg.render_url}/{fpath.parent.name}/{fpath.name}"
     log(INFO, f"Downloaded: {url}")
     try:
         buttons = InlineKeyboardMarkup([[InlineKeyboardButton("❌ Eliminar", "delete")]])
